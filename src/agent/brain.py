@@ -47,6 +47,7 @@ def build_business_profile(
     forecast: dict,
     inv_risks: dict,
     portfolio_economics: dict,
+    recommendations: list[dict] = None,
 ) -> dict:
     """
     Assemble the MITRA merchant business profile.
@@ -160,6 +161,9 @@ def build_business_profile(
             "slow_movers": inv_risks.get("slow_movers", [])[:5],
             "disclosure": inv_risks.get("disclosure"),
         },
+
+        # ── Recommendations ───────────────────────────────────────────────────
+        "recommendations": recommendations or [],
 
         # ── Disclosures ───────────────────────────────────────────────────────
         "disclosures": [

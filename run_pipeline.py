@@ -206,8 +206,21 @@ def run_pipeline(skip_basket: bool = False, skip_forecast: bool = False) -> dict
     else:
         logger.info("[Phase 10] Skipping forecasting.")
 
-    # ── Phase 11: Business Brain ──────────────────────────────────────────────
-    logger.info("[Phase 11] Assembling merchant business profile…")
+    # ── Phase 11: Recommendation Engine ───────────────────────────────────────
+    logger.info("[Phase 11] Generating recommendations…")
+    from src.recommendations.engine import generate_all_recommendations, save_recommendations
+    recommendations = generate_all_recommendations(
+        rules=rules_formatted,
+        inv_df=inv_df,
+        prod_economics=prod_economics,
+        rfm_segments=rfm_segments,
+        seasonality=season,
+        total_revenue=summary["total_revenue"]
+    )
+    save_recommendations(recommendations)
+
+    # ── Phase 12: Business Brain ──────────────────────────────────────────────
+    logger.info("[Phase 12] Assembling merchant business profile…")
     from src.agent.brain import build_business_profile, save_business_profile
     profile = build_business_profile(
         df_clean=df_clean,
@@ -221,6 +234,7 @@ def run_pipeline(skip_basket: bool = False, skip_forecast: bool = False) -> dict
         forecast=forecast,
         inv_risks=inv_risks,
         portfolio_economics=portfolio_economics,
+        recommendations=recommendations,
     )
     save_business_profile(profile)
 
@@ -233,7 +247,7 @@ def run_pipeline(skip_basket: bool = False, skip_forecast: bool = False) -> dict
     _print_final_summary(
         raw_report, cleaning_log, summary, prod_intel,
         prod_classifications, rules_formatted, rfm_segments,
-        season, forecast, elapsed
+        season, forecast, recommendations, elapsed
     )
 
     return {
@@ -245,13 +259,14 @@ def run_pipeline(skip_basket: bool = False, skip_forecast: bool = False) -> dict
         "rfm_segments": rfm_segments,
         "season": season,
         "forecast": forecast,
+        "recommendations": recommendations,
         "profile": profile,
     }
 
 
 def _print_final_summary(
     raw_report, cleaning_log, summary, prod_intel,
-    prod_classifications, rules, rfm_segments, season, forecast, elapsed
+    prod_classifications, rules, rfm_segments, season, forecast, recommendations, elapsed
 ):
     """Print the final results summary."""
     import pandas as pd
@@ -317,6 +332,11 @@ def _print_final_summary(
     print("\n🏗️  PRODUCT LIFECYCLE")
     for label, codes in prod_classifications.items():
         print(f"  {label:<25}: {len(codes):>4} products")
+
+    print("\n💡 RECOMMENDATIONS")
+    print(f"  Total Generated       : {len(recommendations)}")
+    for i, rec in enumerate(recommendations[:5], 1):
+        print(f"  {i}. [{rec['type']}] {rec['title']} (Score: {rec['priority_score']})")
 
     print("\n⚠️  IMPORTANT LIMITATIONS")
     print("  1. COGS is SYNTHETIC — not real merchant cost data.")
